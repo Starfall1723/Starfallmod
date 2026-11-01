@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Starfall Mods: starfalltxtm für Minecraft Java 1.21.11 mit Fabric.">
+<title>Starfall Mods</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0912;--panel:#171222;--line:#302541;--muted:#aaa0bf;--purple:#a987ff;--white:#f6f1ff}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#33204f 0%,var(--bg) 55%);color:var(--white);font-family:system-ui,Arial,sans-serif}
+main{width:min(760px,100%);margin:auto;padding:42px 20px 70px}.hero{text-align:center;padding:25px 0 36px}.logo{font-size:13px;letter-spacing:4px;color:#c6b1ff;font-weight:800}
+h1{font-size:clamp(48px,10vw,82px);line-height:1;margin:22px 0 12px;letter-spacing:-3px}h1 span{color:var(--purple)}
+.version{color:var(--muted);margin-bottom:28px}.download{display:inline-block;background:var(--purple);color:#100a1c;text-decoration:none;font-weight:900;padding:17px 30px;border-radius:12px;box-shadow:0 10px 45px #8e5fff38}
+.download:hover{transform:translateY(-2px)}.stats{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:22px}.stat{background:#171222cc;border:1px solid var(--line);border-radius:12px;padding:12px 18px;min-width:145px}.stat strong{display:block;font-size:24px}.stat small{color:var(--muted)}
+.panel{background:#171222eF;border:1px solid var(--line);border-radius:18px;padding:22px;margin-top:18px}h2{font-size:22px;margin:0 0 14px}.muted,.note{color:var(--muted)}.note{font-size:12px;line-height:1.5}
+form{display:grid;gap:10px;margin-top:14px}input,textarea,select{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);background:#0f0b17;color:var(--white);font:inherit}textarea{min-height:95px;resize:vertical}button{border:0;border-radius:9px;background:var(--purple);color:#100a1c;font-weight:800;padding:12px 16px;font:inherit;cursor:pointer}button:disabled{opacity:.5;cursor:wait}.rating-input{max-width:170px}.review{border-top:1px solid var(--line);padding:14px 0}.review:first-child{border-top:0}.review-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.stars{color:#d8c5ff;letter-spacing:2px}.review p{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}.empty{color:var(--muted);padding:10px 0}.status{min-height:20px;color:#d8c5ff;font-size:13px}.footer{text-align:center;color:#847b96;font-size:12px;margin-top:24px}
+@media(max-width:480px){main{padding:25px 14px 50px}.panel{padding:17px}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase_config.js"></script>
+</head>
+<body><main>
+<section class="hero">
+<div class="logo">✦ STARFALL MODS</div>
+<h1>starfall<span>txtm</span></h1>
+<div class="version">Minecraft Java 1.21.11 · Fabric · Version 0.1.0</div>
+<a class="download" id="download" href="./downloads/starfalltxtm-0.1.0.jar">MOD HERUNTERLADEN</a>
+<div class="stats">
+<div class="stat"><strong id="downloads">—</strong><small>Downloads</small></div>
+<div class="stat"><strong id="average">—</strong><small>Durchschnittsbewertung</small></div>
+<div class="stat"><strong id="review-count">—</strong><small>Bewertungen</small></div>
+</div>
+<p class="note" id="connection-note">Community-Funktionen werden geladen</p>
+</section>
+
+<section class="panel">
+<h2>Bewertungen</h2>
+<div id="reviews"><div class="empty">Bewertungen werden geladen …</div></div>
+<form id="review-form">
+<input name="name" maxlength="24" minlength="2" placeholder="Dein Name (2 bis 24 Zeichen)" required>
+<select class="rating-input" name="rating" required aria-label="Sternebewertung">
+<option value="">Sterne auswählen</option><option value="5">5 Sterne</option><option value="4">4 Sterne</option><option value="3">3 Sterne</option><option value="2">2 Sterne</option><option value="1">1 Stern</option>
+</select>
+<textarea name="review" minlength="3" maxlength="500" placeholder="Deine Bewertung (maximal 500 Zeichen)" required></textarea>
+<button type="submit">Bewertung senden</button><div class="status" id="review-status" aria-live="polite"></div>
+</form>
+</section>
+
+<section class="panel">
+<h2>Feedback</h2>
+<p class="muted">Melde Fehler oder schlage neue Texturen vor</p>
+<form id="feedback-form">
+<input name="name" maxlength="24" minlength="2" placeholder="Dein Name (2 bis 24 Zeichen)" required>
+<textarea name="message" minlength="3" maxlength="1000" placeholder="Dein Feedback (maximal 1000 Zeichen)" required></textarea>
+<button type="submit">Feedback senden</button><div class="status" id="feedback-status" aria-live="polite"></div>
+</form>
+<div id="feedback-list"></div>
+</section>
+<div class="footer">Ein Mod. Ein Download. Viele Texturen.</div>
+</main>
+<script>
+const url = window.STARFALL_SUPABASE_URL;
+const key = window.STARFALL_SUPABASE_ANON_KEY;
+const configured = url && key && !url.includes("HIER_") && !key.includes("HIER_") && window.supabase;
+const db = configured ? window.supabase.createClient(url, key) : null;
+const $ = id => document.getElementById(id);
+const safe = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const localMode = !db;
+
+async function loadCommunity(){
+  if(!db){
+    const reviews = JSON.parse(localStorage.getItem("starfall_reviews") || "[]");
+    const feedback = JSON.parse(localStorage.getItem("starfall_feedback") || "[]");
+    const downloads = Number(localStorage.getItem("starfall_downloads") || 0);
+    renderReviews(reviews); renderFeedback(feedback);
+    $("downloads").textContent = downloads.toLocaleString("de-DE");
+    $("connection-note").textContent = "Lokaler Vorschau-Modus: Einträge sind nur in diesem Browser sichtbar. Für gemeinsame Bewertungen Supabase einrichten.";
+    return;
+  }
+  const [r,f,s] = await Promise.all([
+    db.from("reviews").select("id,display_name,rating,review_text,created_at").order("created_at",{ascending:false}).limit(50),
+    db.from("feedback").select("id,display_name,message,created_at").order("created_at",{ascending:false}).limit(20),
+    db.from("site_stats").select("downloads").eq("id",1).single()
+  ]);
+  if(r.error || f.error || s.error){ $("connection-note").textContent = "Datenbankfehler. Bitte Supabase SQL und Einstellungen prüfen."; }
+  else $("connection-note").textContent = "Community-Daten sind online und für alle Besucher sichtbar.";
+  if(!r.error) renderReviews(r.data || []);
+  if(!f.error) renderFeedback(f.data || []);
+  if(!s.error) $("downloads").textContent = Number(s.data.downloads).toLocaleString("de-DE");
+}
+function renderReviews(rows){
+  const count=rows.length;
+  const avg=count ? rows.reduce((a,r)=>a+Number(r.rating),0)/count : 0;
+  $("average").textContent=count ? avg.toFixed(1)+" / 5" : "Noch keine";
+  $("review-count").textContent=count;
+  $("reviews").innerHTML=count ? rows.map(r=>`<article class="review"><div class="review-head"><strong>${safe(r.display_name)}</strong><span class="stars" aria-label="${Number(r.rating)} von 5 Sternen">${"★".repeat(Number(r.rating))}${"☆".repeat(5-Number(r.rating))}</span></div><p>${safe(r.review_text)}</p></article>`).join("") : '<div class="empty">Noch keine Bewertungen. Sei die erste Person.</div>';
+}
+function renderFeedback(rows){
+  $("feedback-list").innerHTML=rows.length ? '<h2 style="margin-top:22px">Neuestes Feedback</h2>'+rows.map(r=>`<article class="review"><strong>${safe(r.display_name)}</strong><p>${safe(r.message)}</p></article>`).join("") : '<div class="empty">Noch kein Feedback.</div>';
+}
+$("download").addEventListener("click", async () => {
+  if(db){ const {data,error}=await db.rpc("record_download"); if(!error && data!==null) $("downloads").textContent=Number(data).toLocaleString("de-DE"); }
+  else { const n=Number(localStorage.getItem("starfall_downloads")||0)+1; localStorage.setItem("starfall_downloads",n); $("downloads").textContent=n.toLocaleString("de-DE"); }
+});
+$("review-form").addEventListener("submit", async e=>{
+  e.preventDefault(); const form=e.currentTarget; const d=new FormData(form);
+  const row={display_name:String(d.get("name")).trim(),rating:Number(d.get("rating")),review_text:String(d.get("review")).trim()};
+  const status=$("review-status"); status.textContent="Wird gesendet …";
+  if(db){ const {error}=await db.from("reviews").insert(row); if(error){status.textContent="Konnte nicht gesendet werden. Bitte später erneut versuchen.";return;} }
+  else { const rows=JSON.parse(localStorage.getItem("starfall_reviews")||"[]"); rows.unshift({...row,id:Date.now()}); localStorage.setItem("starfall_reviews",JSON.stringify(rows)); }
+  form.reset(); status.textContent="Bewertung gespeichert."; await loadCommunity();
+});
+$("feedback-form").addEventListener("submit", async e=>{
+  e.preventDefault(); const form=e.currentTarget; const d=new FormData(form);
+  const row={display_name:String(d.get("name")).trim(),message:String(d.get("message")).trim()};
+  const status=$("feedback-status"); status.textContent="Wird gesendet …";
+  if(db){ const {error}=await db.from("feedback").insert(row); if(error){status.textContent="Konnte nicht gesendet werden. Bitte später erneut versuchen.";return;} }
+  else { const rows=JSON.parse(localStorage.getItem("starfall_feedback")||"[]"); rows.unshift({...row,id:Date.now()}); localStorage.setItem("starfall_feedback",JSON.stringify(rows)); }
+  form.reset(); status.textContent="Feedback gespeichert."; await loadCommunity();
+});
+loadCommunity().catch(()=>{$("connection-note").textContent="Laden fehlgeschlagen. Bitte später erneut versuchen.";});
+</script>
+</body></html>
